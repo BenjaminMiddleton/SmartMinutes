@@ -61,20 +61,7 @@ class Environment:
         Returns:
             str: Host URL or None if undeterminable
         """
-        # Check Railway-specific environment variables first
-        if railway_url := os.environ.get("RAILWAY_STATIC_URL"):
-            if not railway_url.startswith(("http://", "https://")):
-                railway_url = f"https://{railway_url}"
-            logger.info(f"Detected Railway URL: {railway_url}")
-            return railway_url
-            
-        # Check commonly used environment variables for host URL
-        for env_var in [
-            "HOST_URL",
-            "RENDER_EXTERNAL_URL",
-            "VERCEL_URL",
-            "HEROKU_APP_URL"
-        ]:
+
             if url := os.environ.get(env_var):
                 # Ensure URL has proper protocol
                 if not url.startswith(("http://", "https://")):

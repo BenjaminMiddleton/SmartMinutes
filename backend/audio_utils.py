@@ -51,16 +51,7 @@ def process_audio_file(app, file):
         file.save(filepath)
         
         # Run diarization
-        try:
-            transcript, speakers, duration = diarize_audio(filepath)
-            if not transcript:
-                raise APIError("Failed to generate transcript")
-                
-            return transcript, speakers, duration
-            
-        except Exception as e:
-            app.logger.error(f"Error processing audio: {str(e)}")
-            raise APIError(f"Error processing audio: {str(e)}")
+
             
     finally:
         if filepath and os.path.exists(filepath):

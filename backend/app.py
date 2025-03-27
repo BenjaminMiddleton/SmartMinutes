@@ -23,26 +23,7 @@ from flask_socketio import SocketIO, emit
 import json
 import traceback
 from fpdf import FPDF
-from backend.meeting_minutes import generate_meeting_minutes
-from backend.pdf_generator import generate_pdf, generate_downloadable_pdf
-from backend.job_manager import update_job_status, get_job_status
-from backend.docx_generator import generate_docx
-# Import storage utility functions
-from backend.storage import save_file, save_to_local, save_to_azure, cleanup_file, generate_unique_filename
-# Import audio utility functions 
-from backend.audio_utils import (
-    process_audio_duration, 
-    format_duration, 
-    process_audio_file, 
-    allowed_file, 
-    process_vtt_file, 
-    handle_vtt_file
-)
-from backend.speaker_diarization import diarize_audio, load_models
-# Add this import for scheduled cleanup
-from backend.scheduled_tasks import schedule_cleanup_task, cleanup_task
-# Add this import with other imports
-from backend.environment import Environment
+
 
 # Near the top after imports
 def configure_logging():
@@ -77,18 +58,7 @@ if __name__ == "__main__":
     backend_dir = Path(__file__).parent.parent
     sys.path.append(str(backend_dir))
 
-def initialize_ai_models(app):
-    """Initialize AI models with configured parameters."""
-    try:
-        # Log the AI model being used
-        openai_model = app.config.get('OPENAI_MODEL', 'gpt-4o')
-        app.logger.info(f"Using OpenAI model: {openai_model}")
-        
-        # Any other model initialization can go here
-        return True
-    except Exception as e:
-        app.logger.error(f"Failed to initialize AI models: {str(e)}")
-        return False
+
 
 def create_app(config=None):
     """Application factory pattern to create and configure Flask app."""
@@ -103,28 +73,9 @@ def create_app(config=None):
     # Set up CORS
     # Determine allowed origins based on environment
     let_origins = os.environ.get("CORS_ALLOWED_ORIGINS")
-    if let_origins:
-        allowed_origins = [o.strip() for o in let_origins.split(",") if o.strip()]
-    elif Environment.is_production():
-        # In production on Railway, allow the Railway domain and any custom domains
-        railway_url = os.environ.get("RAILWAY_STATIC_URL", "")
-        railway_custom_domain = os.environ.get("RAILWAY_CUSTOM_DOMAIN", "")
-        allowed_origins = ["https://production.example.com"]  # Replace with your domain
-        
-        if railway_url:
-            if not railway_url.startswith(("http://", "https://")):
-                railway_url = f"https://{railway_url}"
-            allowed_origins.append(railway_url)
-            
-        if railway_custom_domain:
-            if not railway_custom_domain.startswith(("http://", "https://")):
-                railway_custom_domain = f"https://{railway_custom_domain}"
-            allowed_origins.append(railway_custom_domain)
-            
-        # Add a wildcard for Railway subdomains
-        allowed_origins.append("https://*.up.railway.app")
-    else:
-        allowed_origins = ["http://localhost:5173", "http://127.0.0.1:5173"]
+    
+
+    # put origins here 
 
     app.logger.info(f"CORS allowed origins: {allowed_origins}")
     CORS(app, resources={
@@ -623,21 +574,7 @@ def process_file_background(app, file_extension, filepath, job_id, original_file
                         app.socketio.emit("processing_update", {"job_id": job_id, "status": "processing_audio"})
                     except Exception as e:
                         app.logger.warning(f"SocketIO emit failed (processing_audio): {e}")
-                    
-                    try:
-                        app.logger.info("Running diarize_audio")
-                        transcript, speakers, audio_duration = diarize_audio(filepath)
-                        app.logger.info(f"Diarization complete: {len(speakers)} speakers, transcript length: {len(transcript)}")
-                        try:
-                            from pydub import AudioSegment
-                            audio = AudioSegment.from_file(filepath)
-                            duration_seconds = len(audio) / 1000.0
-                            app.logger.info(f"Audio duration in seconds: {duration_seconds}")
-                        except Exception as dur_error:
-                            app.logger.error(f"Error calculating audio duration: {str(dur_error)}")
-                    except Exception as audio_error:
-                        app.logger.error(f"Diarization error: {str(audio_error)}", exc_info=True)
-                        raise Exception(f"Audio processing failed: {str(audio_error)}")
+
                 elif file_extension.lower() in app.config['ALLOWED_VTT_EXTENSIONS']:
                     app.logger.info(f"Processing VTT file: {filepath}")
                     try:
